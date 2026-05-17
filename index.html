@@ -7,22 +7,26 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="fintrack">
-<meta name="theme-color" content="#070c09">
+<meta name="theme-color" content="#050a07">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script src="https://cdn.plaid.com/link/v2/stable/link-initialize.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-html,body{background:#070c09;height:100%;overflow-x:hidden;}
+html,body{background:#050a07;height:100%;overflow-x:hidden;}
 #root{height:100%;}
 input,select,button,textarea{font-family:'Outfit',sans-serif;}
 ::-webkit-scrollbar{display:none;}
 input[type=number]::-webkit-inner-spin-button,
 input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@keyframes glow{0%,100%{box-shadow:0 0 20px rgba(0,232,122,0.15)}50%{box-shadow:0 0 35px rgba(0,232,122,0.3)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+.fade-up{animation:fadeUp 0.4s cubic-bezier(0.16,1,0.3,1) forwards}
 </style>
 </head>
 <body>
@@ -37,7 +41,25 @@ if(localStorage.getItem("ft_version")!=="3"){
   localStorage.setItem("ft_version","3");
 }
 
-const C={bg:"#070c09",card:"#0f1712",surface:"#0b1009",accent:"#00f07a",accentBg:"rgba(0,240,122,0.10)",red:"#ff4d6d",redBg:"rgba(255,77,109,0.10)",amber:"#ffc947",amberBg:"rgba(255,201,71,0.10)",text:"#ddeee5",muted:"#4a6b57",border:"#162219"};
+const C={
+  bg:"#050a07",card:"#0a1210",cardHover:"#0f1a16",surface:"#060d09",
+  accent:"#00e87a",accentBg:"rgba(0,232,122,0.09)",accentBorder:"rgba(0,232,122,0.25)",accentGlow:"rgba(0,232,122,0.15)",
+  red:"#ff3d5a",redBg:"rgba(255,61,90,0.09)",redBorder:"rgba(255,61,90,0.25)",
+  amber:"#ffb830",amberBg:"rgba(255,184,48,0.09)",amberBorder:"rgba(255,184,48,0.25)",
+  text:"#eaf5ef",textSub:"#7a9e89",muted:"#3a5445",border:"#162a1e",borderLight:"#1f3829",
+};
+
+const CAT_COLORS={
+  "Food & Dining":{bg:"rgba(255,120,50,0.15)",color:"#ff7832",dark:"rgba(255,120,50,0.08)"},
+  "Shopping":{bg:"rgba(168,85,247,0.15)",color:"#a855f7",dark:"rgba(168,85,247,0.08)"},
+  "Entertainment":{bg:"rgba(59,130,246,0.15)",color:"#60a5fa",dark:"rgba(59,130,246,0.08)"},
+  "Transportation":{bg:"rgba(234,179,8,0.15)",color:"#fbbf24",dark:"rgba(234,179,8,0.08)"},
+  "Health":{bg:"rgba(52,211,153,0.15)",color:"#34d399",dark:"rgba(52,211,153,0.08)"},
+  "Utilities":{bg:"rgba(6,182,212,0.15)",color:"#22d3ee",dark:"rgba(6,182,212,0.08)"},
+  "Income":{bg:"rgba(0,232,122,0.15)",color:"#00e87a",dark:"rgba(0,232,122,0.08)"},
+  "Other":{bg:"rgba(148,163,184,0.15)",color:"#94a3b8",dark:"rgba(148,163,184,0.08)"},
+};
+
 const CATS=["Food & Dining","Shopping","Entertainment","Transportation","Health","Utilities","Income","Other"];
 const EMOJI={"Food & Dining":"🥡","Shopping":"🛍","Entertainment":"🎮","Transportation":"⛽","Health":"💊","Utilities":"💡","Income":"💵","Other":"📦"};
 const TODAY=new Date().toISOString().slice(0,10);
@@ -65,18 +87,31 @@ async function compressImage(dataUrl){
   });
 }
 
+function CatIcon({category,size=44,photo=null}){
+  const cc=CAT_COLORS[category]||CAT_COLORS["Other"];
+  return(
+    <div style={{width:size,height:size,borderRadius:size*0.28,overflow:"hidden",flexShrink:0,
+      background:photo?"#000":cc.bg,border:`1px solid ${photo?"transparent":cc.color+"30"}`,
+      display:"flex",alignItems:"center",justifyContent:"center",fontSize:size*0.45}}>
+      {photo?<img src={photo} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:EMOJI[category]||"📦"}
+    </div>
+  );
+}
+
 function ScanField({label,value,onChange}){
   const[editing,setEditing]=useState(false);
   const[val,setVal]=useState(String(value));
   return(
-    <div style={{marginBottom:10}}>
-      <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.muted,letterSpacing:1,marginBottom:3}}>{label.toUpperCase()}</p>
+    <div style={{marginBottom:14}}>
+      <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.textSub,letterSpacing:2,marginBottom:6,textTransform:"uppercase"}}>{label}</p>
       {editing
-        ?<input autoFocus value={val} onChange={e=>setVal(e.target.value)} onBlur={()=>{onChange(val);setEditing(false);}} style={{width:"100%",background:C.surface,border:`1px solid ${C.accent}`,color:C.text,borderRadius:8,padding:"8px 10px",fontSize:14,outline:"none"}}/>
-        :<p onClick={()=>setEditing(true)} style={{fontSize:15,cursor:"pointer",padding:"5px 0",borderBottom:`1px dashed ${C.border}`,color:C.text,display:"flex",justifyContent:"space-between"}}>
-          {label==="Amount"?`$${parseFloat(value).toFixed(2)}`:value}
-          <span style={{fontSize:11,color:C.muted}}>✎ edit</span>
-        </p>
+        ?<input autoFocus value={val} onChange={e=>setVal(e.target.value)} onBlur={()=>{onChange(val);setEditing(false);}}
+          style={{width:"100%",background:C.surface,border:`1.5px solid ${C.accent}`,color:C.text,borderRadius:10,padding:"10px 14px",fontSize:15,outline:"none",boxShadow:`0 0 0 3px ${C.accentGlow}`}}/>
+        :<div onClick={()=>setEditing(true)}
+          style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 14px",background:C.surface,borderRadius:10,border:`1px solid ${C.border}`,cursor:"pointer"}}>
+          <span style={{fontSize:16,color:C.text,fontWeight:500}}>{label==="Amount"?`$${parseFloat(value).toFixed(2)}`:value}</span>
+          <span style={{fontSize:11,color:C.muted,fontFamily:"'JetBrains Mono',monospace"}}>edit</span>
+        </div>
       }
     </div>
   );
@@ -84,8 +119,6 @@ function ScanField({label,value,onChange}){
 
 function App(){
   const mono={fontFamily:"'JetBrains Mono',monospace"};
-  const sans={fontFamily:"'Outfit',sans-serif"};
-  const card={background:C.card,borderRadius:14,border:`1px solid ${C.border}`,padding:"16px 18px",marginBottom:10};
   const[tab,setTab]=useState("home");
   const[balance,setBalance]=useState(()=>parseFloat(localStorage.getItem("ft_balance")||"0"));
   const[bankConnected,setBankConnected]=useState(()=>localStorage.getItem("ft_connected")==="1");
@@ -97,6 +130,7 @@ function App(){
   const[scanning,setScanning]=useState(false);
   const[scanResult,setScanResult]=useState(null);
   const[scanPhoto,setScanPhoto]=useState(null);
+  const[scanMode,setScanMode]=useState("receipt");
   const[preview,setPreview]=useState(null);
   const[manualForm,setManualForm]=useState({amount:"",store:"",category:"Other",date:TODAY});
   const[habits,setHabits]=useState("");
@@ -104,6 +138,7 @@ function App(){
   const[emailTxt,setEmailTxt]=useState("");
   const[copied,setCopied]=useState(false);
   const[toast,setToast]=useState("");
+  const[toastType,setToastType]=useState("success");
   const[manualBal,setManualBal]=useState("");
   const[keyInput,setKeyInput]=useState(apiKey);
   const[selectedTxn,setSelectedTxn]=useState(null);
@@ -121,10 +156,10 @@ function App(){
   const byCat=thisWeek.filter(t=>t.type==="expense").reduce((acc,t)=>{acc[t.category]=(acc[t.category]||0)+t.amount;return acc;},{});
   const wLabel=`${wStart.toLocaleDateString("en-US",{month:"short",day:"numeric"})} – ${wEnd.toLocaleDateString("en-US",{month:"short",day:"numeric"})}`;
 
-  function showToast(msg){setToast(msg);setTimeout(()=>setToast(""),2800);}
+  function showToast(msg,type="success"){setToast(msg);setToastType(type);setTimeout(()=>setToast(""),2800);}
 
   async function doScan(file){
-    if(!apiKey){showToast("Add API key in Settings ⚙");setShowSettings(true);return;}
+    if(!apiKey){showToast("Add API key in Settings","warning");setShowSettings(true);return;}
     const reader=new FileReader();
     reader.onload=async e=>{
       const compressed=await compressImage(e.target.result);
@@ -148,35 +183,51 @@ function App(){
     reader.readAsDataURL(file);
   }
 
+  async function doScanPaystub(file){
+    if(!apiKey){showToast("Add API key in Settings","warning");setShowSettings(true);return;}
+    const reader=new FileReader();
+    reader.onload=async e=>{
+      const compressed=await compressImage(e.target.result);
+      setPreview(compressed);setScanning(true);
+      try{
+        const res=await fetch("https://api.anthropic.com/v1/messages",{
+          method:"POST",
+          headers:{"Content-Type":"application/json","x-api-key":apiKey,"anthropic-version":"2023-06-01","anthropic-dangerous-direct-browser-access":"true"},
+          body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:400,messages:[{role:"user",content:[
+            {type:"image",source:{type:"base64",media_type:"image/jpeg",data:compressed.split(",")[1]}},
+            {type:"text",text:'Analyze this pay stub. Return ONLY a valid JSON object with: "amount" (number - the NET PAY or take-home pay after all deductions, NOT gross pay), "store" (string - employer name), "date" (YYYY-MM-DD, use pay period end date or check date), "items" (string - brief description like "Net pay after taxes"). JSON only, no markdown.'}
+          ]}]})
+        });
+        const data=await res.json();
+        if(data.error)throw new Error(data.error.message);
+        const txt=data.content?.map(b=>b.text||"").join("").replace(/```json|```/g,"").trim();
+        const parsed=JSON.parse(txt);
+        setScanResult({...parsed,category:"Income"});setScanPhoto(compressed);
+      }catch(err){setScanResult({error:true,msg:err.message||""});}
+      setScanning(false);
+    };
+    reader.readAsDataURL(file);
+  }
+
   function addTxn(data,photo=null){
     const amount=parseFloat(data.amount);
     const type=data.category==="Income"?"income":"expense";
     const t={id:nextId,amount,store:data.store,category:data.category,date:data.date||TODAY,type,photo:photo||null};
     setTxns(prev=>[t,...prev]);setNextId(n=>n+1);
-    setBalance(prev=>{
-      const newBal=type==="income"?prev+amount:prev-amount;
-      localStorage.setItem("ft_balance",String(newBal));
-      return newBal;
-    });
+    setBalance(prev=>{const n=type==="income"?prev+amount:prev-amount;localStorage.setItem("ft_balance",String(n));return n;});
     setScanResult(null);setPreview(null);setScanPhoto(null);
     setManualForm({amount:"",store:"",category:"Other",date:TODAY});
-    showToast(type==="income"?"+ Income added!":"- Expense logged!");setTab("home");
+    showToast(type==="income"?"Income added!":"Expense logged!");setTab("home");
   }
 
   function deleteTxn(id){
     const t=txns.find(t=>t.id===id);
-    if(t){
-      setBalance(prev=>{
-        const newBal=t.type==="income"?prev-t.amount:prev+t.amount;
-        localStorage.setItem("ft_balance",String(newBal));
-        return newBal;
-      });
-    }
-    setTxns(prev=>prev.filter(t=>t.id!==id));setSelectedTxn(null);showToast("Deleted");
+    if(t){setBalance(prev=>{const n=t.type==="income"?prev-t.amount:prev+t.amount;localStorage.setItem("ft_balance",String(n));return n;});}
+    setTxns(prev=>prev.filter(t=>t.id!==id));setSelectedTxn(null);showToast("Deleted","error");
   }
 
   async function getHabits(){
-    if(!apiKey){showToast("Add API key in Settings ⚙");setShowSettings(true);return;}
+    if(!apiKey){showToast("Add API key in Settings","warning");setShowSettings(true);return;}
     setLoadingHabits(true);setHabits("");
     try{
       const lines=txns.slice(0,20).map(t=>`${t.date}: ${t.type==="income"?"IN":"OUT"} $${t.amount.toFixed(2)} — ${t.store} (${t.category})`).join("\n");
@@ -210,39 +261,275 @@ function App(){
           const{balance:bal}=await r.json();
           setBalance(bal);setBankConnected(true);
           localStorage.setItem("ft_balance",String(bal));localStorage.setItem("ft_connected","1");
-          showToast("🏦 Bank connected!");setShowBankModal(false);
+          showToast("Bank connected!");setShowBankModal(false);
         },
         onExit:()=>{}
       });
       handler.open();
-    }catch{showToast("Set up Plaid backend first — use manual for now");}
+    }catch{showToast("Use manual balance for now","warning");}
     setPlaidLoading(false);
   }
 
+  const card=(extra={})=>({background:C.card,borderRadius:18,border:`1px solid ${C.border}`,padding:"18px 20px",marginBottom:12,...extra});
+  const pill=(bg,color)=>({display:"inline-flex",alignItems:"center",gap:4,background:bg,color,borderRadius:20,padding:"3px 10px",fontSize:11,fontWeight:600,fontFamily:"'JetBrains Mono',monospace",letterSpacing:0.5});
+
+  const renderHome=()=>(
+    <div style={{padding:"0 16px"}} className="fade-up">
+      <div style={{...card(),padding:"32px 24px",marginBottom:14,position:"relative",overflow:"hidden",background:"linear-gradient(145deg,#0c1a12,#091410)",boxShadow:"0 8px 32px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.04)",border:`1px solid ${C.borderLight}`}}>
+        <div style={{position:"absolute",top:-60,right:-60,width:200,height:200,borderRadius:"50%",background:`radial-gradient(circle,${C.accentGlow} 0%,transparent 70%)`}}/>
+        <div style={{position:"relative"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+            <div>
+              <p style={{...mono,fontSize:10,color:C.muted,letterSpacing:3,marginBottom:4}}>{bankConnected?"LIVE BALANCE":"BALANCE"}</p>
+              <div style={{display:"flex",alignItems:"baseline",gap:2}}>
+                <span style={{...mono,fontSize:13,color:C.textSub}}>$</span>
+                <span style={{...mono,fontSize:48,fontWeight:600,color:C.text,lineHeight:1,letterSpacing:-2,textShadow:`0 0 40px ${C.accentGlow}`}}>{fmt(balance).split(".")[0]}</span>
+                <span style={{...mono,fontSize:24,color:C.textSub,alignSelf:"flex-end",marginBottom:4}}>.{fmt(balance).split(".")[1]}</span>
+              </div>
+            </div>
+            <button onClick={()=>setShowBankModal(true)} style={{padding:"8px 16px",background:bankConnected?C.accentBg:"rgba(255,255,255,0.04)",border:`1px solid ${bankConnected?C.accentBorder:C.border}`,color:bankConnected?C.accent:C.textSub,borderRadius:24,fontSize:12,cursor:"pointer",...mono,letterSpacing:1}}>
+              {bankConnected?"✓ LIVE":"+ BANK"}
+            </button>
+          </div>
+          <div style={{display:"flex",gap:6}}>
+            <span style={pill(C.accentBg,C.accent)}>↑ ${fmt(weekIncome)} in</span>
+            <span style={pill(C.redBg,C.red)}>↓ ${fmt(weekExpense)} out</span>
+          </div>
+        </div>
+      </div>
+      <div style={{...card(),marginBottom:14,background:weekNet>=0?"linear-gradient(135deg,#0a1a0f,#0f2418)":"linear-gradient(135deg,#140a0e,#1a0f14)",border:`1px solid ${weekNet>=0?C.accentBorder:C.redBorder}`,boxShadow:`0 4px 20px ${weekNet>=0?"rgba(0,232,122,0.08)":"rgba(255,61,90,0.08)"}`}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+          <div>
+            <p style={{fontSize:12,color:C.textSub,marginBottom:6,fontWeight:500}}>This week you {weekNet>=0?"made":"lost"}</p>
+            <p style={{...mono,fontSize:34,color:weekNet>=0?C.accent:C.red,fontWeight:600,letterSpacing:-1}}>{weekNet>=0?"+":"–"}${fmt(Math.abs(weekNet))}</p>
+          </div>
+          <div style={{width:52,height:52,borderRadius:16,background:weekNet>=0?C.accentBg:C.redBg,border:`1px solid ${weekNet>=0?C.accentBorder:C.redBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:26}}>{weekNet>=0?"📈":"📉"}</div>
+        </div>
+      </div>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,marginTop:4}}>
+        <p style={{...mono,fontSize:10,color:C.muted,letterSpacing:3}}>RECENT</p>
+        <p style={{fontSize:12,color:C.muted}}>{txns.length} total</p>
+      </div>
+      {txns.length===0&&(
+        <div style={{...card(),textAlign:"center",padding:"48px 24px",border:`1px dashed ${C.border}`}}>
+          <div style={{fontSize:48,marginBottom:16}}>📋</div>
+          <p style={{fontSize:16,color:C.text,fontWeight:600,marginBottom:8}}>No transactions yet</p>
+          <p style={{fontSize:13,color:C.muted,lineHeight:1.6}}>Tap the scan tab to add your first receipt or pay stub</p>
+        </div>
+      )}
+      {txns.slice(0,20).map((t,i)=>(
+        <div key={t.id} onClick={()=>setSelectedTxn(t)}
+          style={{...card(),display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px",cursor:"pointer",animationDelay:`${i*0.04}s`}}
+          onTouchStart={e=>e.currentTarget.style.background=C.cardHover}
+          onTouchEnd={e=>e.currentTarget.style.background=C.card}>
+          <div style={{display:"flex",alignItems:"center",gap:14}}>
+            <CatIcon category={t.category} photo={t.photo} size={46}/>
+            <div>
+              <p style={{fontSize:15,fontWeight:600,color:C.text,marginBottom:3}}>{t.store}</p>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{...pill(CAT_COLORS[t.category]?.dark||"rgba(148,163,184,0.08)",CAT_COLORS[t.category]?.color||"#94a3b8"),padding:"2px 8px",fontSize:10}}>{t.category}</span>
+                <span style={{fontSize:11,color:C.muted,...mono}}>{t.date}</span>
+                {t.photo&&<span style={{fontSize:11}}>📷</span>}
+              </div>
+            </div>
+          </div>
+          <p style={{...mono,fontSize:16,color:t.type==="income"?C.accent:C.text,fontWeight:600,whiteSpace:"nowrap"}}>{t.type==="income"?"+":"–"}${fmt(t.amount)}</p>
+        </div>
+      ))}
+      <div style={{height:8}}/>
+    </div>
+  );
+
+  const renderReceipt=()=>(
+    <div style={{padding:"0 16px"}} className="fade-up">
+      <p style={{...mono,fontSize:10,color:C.muted,letterSpacing:3,marginBottom:16}}>SCAN DOCUMENT</p>
+      <div style={{display:"flex",gap:8,marginBottom:16,background:C.surface,borderRadius:14,padding:4,border:`1px solid ${C.border}`}}>
+        {[{id:"receipt",label:"📷 Receipt",sub:"expenses"},{id:"paystub",label:"💵 Pay Stub",sub:"income"}].map(m=>(
+          <button key={m.id} onClick={()=>{setScanMode(m.id);setScanResult(null);setPreview(null);setScanPhoto(null);}}
+            style={{flex:1,padding:"10px 8px",borderRadius:10,border:"none",cursor:"pointer",background:scanMode===m.id?C.card:"transparent",boxShadow:scanMode===m.id?"0 2px 8px rgba(0,0,0,0.3)":"none",transition:"all 0.2s"}}>
+            <p style={{fontSize:13,fontWeight:600,color:scanMode===m.id?C.text:C.muted,marginBottom:2}}>{m.label}</p>
+            <p style={{fontSize:10,color:scanMode===m.id?C.textSub:C.muted,...mono}}>{m.sub}</p>
+          </button>
+        ))}
+      </div>
+      {!apiKey&&<div style={{...card(),border:`1px solid ${C.amberBorder}`,background:C.amberBg,marginBottom:16}}><p style={{fontSize:13,color:C.amber,fontWeight:600,marginBottom:4}}>⚡ API key needed</p><p style={{fontSize:12,color:C.textSub,lineHeight:1.7}}>Tap ⚙ top right to add your Anthropic key. Or use manual entry below.</p></div>}
+      {!preview&&!scanResult&&(
+        <div onClick={()=>fileRef.current?.click()}
+          style={{...card(),textAlign:"center",padding:"52px 24px",cursor:"pointer",border:`2px dashed ${C.borderLight}`,background:"linear-gradient(145deg,rgba(10,18,16,0.5),rgba(6,13,9,0.5))"}}>
+          <div style={{width:72,height:72,borderRadius:20,background:scanMode==="paystub"?C.accentBg:"rgba(59,130,246,0.1)",border:`1px solid ${scanMode==="paystub"?C.accentBorder:"rgba(59,130,246,0.3)"}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,margin:"0 auto 20px"}}>
+            {scanMode==="paystub"?"💵":"📷"}
+          </div>
+          <p style={{fontSize:17,fontWeight:600,color:C.text,marginBottom:8}}>{scanMode==="paystub"?"Scan your pay stub":"Scan a receipt"}</p>
+          <p style={{fontSize:13,color:C.textSub,lineHeight:1.6}}>{scanMode==="paystub"?"AI reads your net take-home pay automatically":"AI reads the amount, store & category automatically"}</p>
+          {scanMode==="paystub"&&<div style={{marginTop:14,padding:"8px 16px",background:C.accentBg,border:`1px solid ${C.accentBorder}`,borderRadius:10,display:"inline-block"}}><p style={{fontSize:12,color:C.accent,...mono}}>reads NET PAY after taxes</p></div>}
+          <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>{if(e.target.files[0]){scanMode==="paystub"?doScanPaystub(e.target.files[0]):doScan(e.target.files[0]);}}}/>
+        </div>
+      )}
+      {preview&&scanning&&(
+        <div style={{...card(),textAlign:"center",padding:32}}>
+          <img src={preview} alt="" style={{maxWidth:"100%",maxHeight:200,objectFit:"contain",borderRadius:12,marginBottom:20,border:`1px solid ${C.border}`}}/>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+            <div style={{width:18,height:18,borderRadius:"50%",border:`2px solid ${C.accent}`,borderTopColor:"transparent",animation:"spin 0.8s linear infinite"}}/>
+            <p style={{...mono,fontSize:13,color:C.accent,letterSpacing:2}}>{scanMode==="paystub"?"READING PAY STUB...":"READING RECEIPT..."}</p>
+          </div>
+        </div>
+      )}
+      {scanResult&&!scanResult.error&&(
+        <div className="fade-up">
+          {preview&&<div style={{borderRadius:16,overflow:"hidden",marginBottom:12,border:`1px solid ${C.border}`}}><img src={preview} alt="" style={{width:"100%",maxHeight:180,objectFit:"contain",background:"#000",display:"block"}}/></div>}
+          <div style={{...card(),border:`1px solid ${C.accentBorder}`,background:"linear-gradient(145deg,#0a1a12,#091410)"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}>
+              <div style={{width:8,height:8,borderRadius:"50%",background:C.accent,boxShadow:`0 0 8px ${C.accent}`}}/>
+              <p style={{...mono,fontSize:10,color:C.accent,letterSpacing:2}}>SCAN COMPLETE — TAP TO EDIT</p>
+            </div>
+            <ScanField label="Store" value={scanResult.store} onChange={v=>setScanResult(r=>({...r,store:v}))}/>
+            <ScanField label="Amount" value={scanResult.amount} onChange={v=>setScanResult(r=>({...r,amount:parseFloat(v.replace("$",""))||0}))}/>
+            <ScanField label="Date" value={scanResult.date} onChange={v=>setScanResult(r=>({...r,date:v}))}/>
+            <div style={{marginBottom:14}}>
+              <p style={{...mono,fontSize:10,color:C.textSub,letterSpacing:2,marginBottom:6}}>CATEGORY</p>
+              <select value={scanResult.category} onChange={e=>setScanResult(r=>({...r,category:e.target.value}))} style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,color:C.text,borderRadius:10,padding:"11px 14px",fontSize:15,outline:"none"}}>
+                {CATS.map(c=><option key={c} value={c}>{EMOJI[c]} {c}</option>)}
+              </select>
+            </div>
+            {scanResult.items&&scanResult.items!=="N/A"&&<p style={{fontSize:12,color:C.textSub,padding:"8px 12px",background:C.surface,borderRadius:8}}>🧾 {scanResult.items}</p>}
+          </div>
+          <button onClick={()=>addTxn({...scanResult,amount:parseFloat(scanResult.amount)},scanPhoto)} style={{width:"100%",padding:"16px",background:C.accent,color:"#000",border:"none",borderRadius:14,fontSize:16,fontWeight:700,cursor:"pointer",marginBottom:10,boxShadow:`0 4px 20px ${C.accentGlow}`}}>
+            {scanMode==="paystub"?"Add Income + Save Pay Stub":"Add Transaction + Save Photo"}
+          </button>
+          <button onClick={()=>{setScanResult(null);setPreview(null);setScanPhoto(null);}} style={{width:"100%",padding:"14px",background:"transparent",color:C.textSub,border:`1px solid ${C.border}`,borderRadius:14,fontSize:15,cursor:"pointer"}}>Try Again</button>
+        </div>
+      )}
+      {scanResult?.error&&(
+        <div style={{...card(),textAlign:"center",padding:28,border:`1px solid ${C.redBorder}`}}>
+          <div style={{fontSize:36,marginBottom:12}}>⚠️</div>
+          <p style={{color:C.red,fontSize:15,fontWeight:600,marginBottom:6}}>Couldn't read document</p>
+          {scanResult.msg&&<p style={{fontSize:12,color:C.textSub,marginBottom:16,lineHeight:1.5}}>{scanResult.msg}</p>}
+          <button onClick={()=>{setScanResult(null);setPreview(null);setScanPhoto(null);}} style={{padding:"10px 28px",background:"transparent",border:`1px solid ${C.border}`,color:C.textSub,borderRadius:10,cursor:"pointer",fontSize:14}}>Try Again</button>
+        </div>
+      )}
+      {!preview&&!scanResult&&(
+        <>
+          <div style={{display:"flex",alignItems:"center",gap:12,margin:"24px 0 16px"}}>
+            <div style={{flex:1,height:1,background:C.border}}/>
+            <p style={{...mono,fontSize:10,color:C.muted,letterSpacing:2}}>OR MANUAL</p>
+            <div style={{flex:1,height:1,background:C.border}}/>
+          </div>
+          <div style={card()}>
+            {[["amount","Amount ($)","number","0.00"],["store","Store / Source","text","e.g. Walmart"]].map(([k,lbl,type,ph])=>(
+              <div key={k} style={{marginBottom:14}}>
+                <p style={{...mono,fontSize:10,color:C.textSub,letterSpacing:2,marginBottom:6}}>{lbl.toUpperCase()}</p>
+                <input value={manualForm[k]} onChange={e=>setManualForm(f=>({...f,[k]:e.target.value}))} type={type} placeholder={ph} style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,color:C.text,borderRadius:10,padding:"12px 14px",fontSize:15,outline:"none"}}/>
+              </div>
+            ))}
+            <div style={{marginBottom:14}}>
+              <p style={{...mono,fontSize:10,color:C.textSub,letterSpacing:2,marginBottom:6}}>CATEGORY</p>
+              <select value={manualForm.category} onChange={e=>setManualForm(f=>({...f,category:e.target.value}))} style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,color:C.text,borderRadius:10,padding:"12px 14px",fontSize:15,outline:"none"}}>
+                {CATS.map(c=><option key={c} value={c}>{EMOJI[c]} {c}</option>)}
+              </select>
+            </div>
+            <div style={{marginBottom:20}}>
+              <p style={{...mono,fontSize:10,color:C.textSub,letterSpacing:2,marginBottom:6}}>DATE</p>
+              <input type="date" value={manualForm.date} onChange={e=>setManualForm(f=>({...f,date:e.target.value}))} style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,color:C.text,borderRadius:10,padding:"12px 14px",fontSize:15,outline:"none"}}/>
+            </div>
+            <button onClick={()=>{if(manualForm.amount&&manualForm.store)addTxn(manualForm);else showToast("Enter amount and store","warning");}} style={{width:"100%",padding:"15px",background:C.accent,color:"#000",border:"none",borderRadius:12,fontSize:16,fontWeight:700,cursor:"pointer",boxShadow:`0 4px 16px ${C.accentGlow}`}}>Add Transaction</button>
+          </div>
+        </>
+      )}
+      <div style={{height:8}}/>
+    </div>
+  );
+
+  const renderSummary=()=>(
+    <div style={{padding:"0 16px"}} className="fade-up">
+      <p style={{...mono,fontSize:10,color:C.muted,letterSpacing:3,marginBottom:16}}>WEEKLY SUMMARY</p>
+      <div style={{...card(),padding:"28px 24px",marginBottom:14,textAlign:"center",position:"relative",overflow:"hidden",background:weekNet>=0?"linear-gradient(145deg,#0a1a0f,#091410)":"linear-gradient(145deg,#140a0e,#1a0f14)",border:`1px solid ${weekNet>=0?C.accentBorder:C.redBorder}`,boxShadow:`0 8px 32px ${weekNet>=0?"rgba(0,232,122,0.1)":"rgba(255,61,90,0.1)"}`}}>
+        <div style={{position:"absolute",top:-30,left:"50%",transform:"translateX(-50%)",width:200,height:200,borderRadius:"50%",background:`radial-gradient(circle,${weekNet>=0?C.accentGlow:C.redBg} 0%,transparent 70%)`}}/>
+        <p style={{fontSize:13,color:C.textSub,marginBottom:10,position:"relative"}}>{wLabel}</p>
+        <p style={{...mono,fontSize:52,color:weekNet>=0?C.accent:C.red,fontWeight:600,lineHeight:1,letterSpacing:-2,position:"relative",textShadow:`0 0 40px ${weekNet>=0?C.accentGlow:C.redBg}`}}>{weekNet>=0?"+":"–"}${fmt(Math.abs(weekNet))}</p>
+        <p style={{fontSize:13,color:C.textSub,marginTop:10,position:"relative"}}>{weekNet>=0?"ahead of expenses":"over your income"}</p>
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:16}}>
+        {[{label:"Income",v:weekIncome,c:C.accent,bg:C.accentBg,border:C.accentBorder,icon:"💵"},{label:"Expenses",v:weekExpense,c:C.red,bg:C.redBg,border:C.redBorder,icon:"💸"}].map(({label,v,c,bg,border,icon})=>(
+          <div key={label} style={{...card(),marginBottom:0,background:bg,border:`1px solid ${border}`,padding:"18px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}><p style={{fontSize:12,color:C.textSub,fontWeight:500}}>{label}</p><span style={{fontSize:16}}>{icon}</span></div>
+            <p style={{...mono,fontSize:22,color:c,fontWeight:600}}>${fmt(v)}</p>
+          </div>
+        ))}
+      </div>
+      <p style={{...mono,fontSize:10,color:C.muted,letterSpacing:3,marginBottom:12}}>BY CATEGORY</p>
+      {Object.keys(byCat).length===0&&<div style={{...card(),textAlign:"center",padding:"28px",border:`1px dashed ${C.border}`}}><p style={{color:C.textSub,fontSize:14}}>No expenses logged this week yet</p></div>}
+      {Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>{
+        const pct=weekExpense>0?(v/weekExpense)*100:0;
+        const cc=CAT_COLORS[k]||CAT_COLORS["Other"];
+        return(<div key={k} style={{...card(),padding:"14px 18px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+            <div style={{display:"flex",alignItems:"center",gap:10}}><CatIcon category={k} size={34}/><span style={{fontSize:14,color:C.text,fontWeight:500}}>{k}</span></div>
+            <span style={{...mono,fontSize:15,color:cc.color,fontWeight:600}}>${fmt(v)}</span>
+          </div>
+          <div style={{height:4,background:C.surface,borderRadius:4,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:`linear-gradient(90deg,${cc.color}aa,${cc.color})`,borderRadius:4}}/></div>
+          <p style={{fontSize:11,color:C.muted,...mono,marginTop:6}}>{pct.toFixed(0)}% of expenses</p>
+        </div>);
+      })}
+      <button onClick={makeEmail} style={{width:"100%",padding:"16px",background:C.accent,color:"#000",border:"none",borderRadius:14,fontSize:16,fontWeight:700,cursor:"pointer",marginTop:4,marginBottom:12,boxShadow:`0 4px 20px ${C.accentGlow}`}}>📧 Generate Weekly Email</button>
+      {emailTxt&&(
+        <div style={{...card(),border:`1px solid ${C.accentBorder}`}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <p style={{...mono,fontSize:10,color:C.muted,letterSpacing:2}}>EMAIL PREVIEW</p>
+            <button onClick={()=>{navigator.clipboard.writeText(emailTxt);setCopied(true);setTimeout(()=>setCopied(false),2200);}} style={{padding:"5px 16px",background:copied?C.accentBg:"transparent",border:`1px solid ${copied?C.accent:C.border}`,color:copied?C.accent:C.textSub,borderRadius:20,fontSize:12,cursor:"pointer",...mono}}>{copied?"✓ Copied!":"Copy"}</button>
+          </div>
+          <pre style={{...mono,fontSize:11,color:C.text,whiteSpace:"pre-wrap",lineHeight:1.8,wordBreak:"break-word"}}>{emailTxt}</pre>
+        </div>
+      )}
+      <div style={{height:8}}/>
+    </div>
+  );
+
+  const renderHabits=()=>(
+    <div style={{padding:"0 16px"}} className="fade-up">
+      <p style={{...mono,fontSize:10,color:C.muted,letterSpacing:3,marginBottom:16}}>SPENDING HABITS</p>
+      {!apiKey&&<div style={{...card(),border:`1px solid ${C.amberBorder}`,background:C.amberBg,marginBottom:16}}><p style={{fontSize:13,color:C.amber,fontWeight:600,marginBottom:4}}>⚡ API key needed</p><p style={{fontSize:12,color:C.textSub,lineHeight:1.7}}>Tap ⚙ top right to unlock AI habit tips.</p></div>}
+      <div style={{...card(),textAlign:"center",padding:"36px 24px",marginBottom:16,background:"linear-gradient(145deg,#0c1510,#091410)",border:`1px solid ${C.borderLight}`}}>
+        <div style={{width:72,height:72,borderRadius:20,background:C.accentBg,border:`1px solid ${C.accentBorder}`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,margin:"0 auto 20px"}}>🧠</div>
+        <p style={{fontSize:16,fontWeight:600,color:C.text,marginBottom:8}}>AI Habit Analysis</p>
+        <p style={{fontSize:13,color:C.textSub,marginBottom:24,lineHeight:1.7}}>Get personalized tips based on your actual spending patterns.</p>
+        <button onClick={getHabits} disabled={loadingHabits} style={{width:"100%",padding:"15px",background:loadingHabits?"rgba(0,232,122,0.08)":C.accent,color:loadingHabits?C.muted:"#000",border:`1px solid ${loadingHabits?C.accentBorder:C.accent}`,borderRadius:12,fontSize:16,fontWeight:700,cursor:loadingHabits?"default":"pointer",boxShadow:loadingHabits?"none":`0 4px 16px ${C.accentGlow}`,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
+          {loadingHabits&&<div style={{width:16,height:16,borderRadius:"50%",border:`2px solid ${C.accent}`,borderTopColor:"transparent",animation:"spin 0.8s linear infinite"}}/>}
+          {loadingHabits?"Analyzing your spending...":"Analyze My Habits"}
+        </button>
+      </div>
+      {habits&&<div style={{...card(),border:`1px solid ${C.accentBorder}`,background:"linear-gradient(145deg,#0a1a12,#091410)"}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16}}><div style={{width:8,height:8,borderRadius:"50%",background:C.accent,boxShadow:`0 0 8px ${C.accent}`}}/><p style={{...mono,fontSize:10,color:C.accent,letterSpacing:2}}>PERSONALIZED TIPS</p></div><p style={{fontSize:14,lineHeight:1.9,color:C.text,whiteSpace:"pre-wrap"}}>{habits}</p></div>}
+      <p style={{...mono,fontSize:10,color:C.muted,letterSpacing:3,marginTop:24,marginBottom:12}}>ALL-TIME BY CATEGORY</p>
+      {Object.entries(txns.filter(t=>t.type==="expense").reduce((acc,t)=>{acc[t.category]=(acc[t.category]||0)+t.amount;return acc;},{})).sort((a,b)=>b[1]-a[1]).map(([k,v])=>{
+        const cc=CAT_COLORS[k]||CAT_COLORS["Other"];
+        return(<div key={k} style={{...card(),display:"flex",justifyContent:"space-between",alignItems:"center",padding:"14px 16px"}}><div style={{display:"flex",alignItems:"center",gap:12}}><CatIcon category={k} size={40}/><span style={{fontSize:14,color:C.text,fontWeight:500}}>{k}</span></div><span style={{...mono,fontSize:15,color:cc.color,fontWeight:600}}>${fmt(v)}</span></div>);
+      })}
+      <div style={{height:8}}/>
+    </div>
+  );
+
   const TxnModal=()=>{
     const t=selectedTxn;if(!t)return null;
+    const cc=CAT_COLORS[t.category]||CAT_COLORS["Other"];
     return(
-      <div onClick={()=>setSelectedTxn(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.92)",zIndex:300,display:"flex",alignItems:"flex-end",justifyContent:"center"}}>
-        <div onClick={e=>e.stopPropagation()} style={{background:C.card,borderRadius:"20px 20px 0 0",width:"100%",maxWidth:480,border:`1px solid ${C.border}`,borderBottom:"none",maxHeight:"90vh",overflowY:"auto"}}>
+      <div onClick={()=>setSelectedTxn(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",zIndex:300,display:"flex",alignItems:"flex-end",justifyContent:"center",backdropFilter:"blur(8px)"}}>
+        <div onClick={e=>e.stopPropagation()} style={{background:C.card,borderRadius:"24px 24px 0 0",width:"100%",maxWidth:480,border:`1px solid ${C.borderLight}`,borderBottom:"none",maxHeight:"90vh",overflowY:"auto",boxShadow:"0 -8px 40px rgba(0,0,0,0.6)"}}>
           {t.photo
-            ?<div style={{width:"100%",background:"#000",borderRadius:"20px 20px 0 0",display:"flex",alignItems:"center",justifyContent:"center",minHeight:220}}>
-              <img src={t.photo} alt="receipt" style={{width:"100%",maxHeight:320,objectFit:"contain",borderRadius:"20px 20px 0 0"}}/>
-            </div>
-            :<div style={{width:"100%",height:130,background:C.surface,borderRadius:"20px 20px 0 0",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:8}}>
-              <span style={{fontSize:44}}>{EMOJI[t.category]||"📦"}</span>
-              <p style={{fontFamily:"'Outfit',sans-serif",fontSize:12,color:C.muted}}>No photo saved</p>
-            </div>
+            ?<div style={{width:"100%",background:"#000",borderRadius:"24px 24px 0 0",overflow:"hidden",maxHeight:300}}><img src={t.photo} alt="" style={{width:"100%",maxHeight:300,objectFit:"contain",display:"block"}}/></div>
+            :<div style={{width:"100%",height:140,borderRadius:"24px 24px 0 0",background:cc.dark,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:10}}><CatIcon category={t.category} size={60}/><p style={{fontSize:12,color:C.textSub,...mono,letterSpacing:1}}>NO PHOTO SAVED</p></div>
           }
-          <div style={{padding:"22px 20px 48px"}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:18}}>
-              <div>
-                <p style={{fontFamily:"'Outfit',sans-serif",fontSize:21,fontWeight:700,marginBottom:4}}>{t.store}</p>
-                <p style={{fontFamily:"'Outfit',sans-serif",fontSize:13,color:C.muted}}>{t.category} · {t.date}</p>
+          <div style={{padding:"24px 20px 48px"}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:20}}>
+              <div style={{flex:1,marginRight:12}}>
+                <p style={{fontSize:22,fontWeight:700,color:C.text,marginBottom:6,lineHeight:1.2}}>{t.store}</p>
+                <div style={{display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}><span style={pill(cc.bg,cc.color)}>{t.category}</span><span style={{fontSize:12,color:C.muted,...mono}}>{t.date}</span></div>
               </div>
-              <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:22,color:t.type==="income"?C.accent:C.text,fontWeight:500,whiteSpace:"nowrap",paddingTop:4}}>{t.type==="income"?"+":"–"}${fmt(t.amount)}</p>
+              <div style={{textAlign:"right"}}>
+                <p style={{...mono,fontSize:28,color:t.type==="income"?C.accent:C.text,fontWeight:700,letterSpacing:-1}}>{t.type==="income"?"+":"–"}${fmt(t.amount)}</p>
+                <p style={{fontSize:12,color:t.type==="income"?C.accent:C.red,marginTop:2}}>{t.type==="income"?"income":"expense"}</p>
+              </div>
             </div>
-            <button onClick={()=>deleteTxn(t.id)} style={{width:"100%",padding:"13px",background:C.redBg,color:C.red,border:`1px solid ${C.red}40`,borderRadius:12,fontSize:15,fontWeight:600,cursor:"pointer",marginBottom:10}}>Delete Transaction</button>
-            <button onClick={()=>setSelectedTxn(null)} style={{width:"100%",padding:"12px",background:"transparent",color:C.muted,border:`1px solid ${C.border}`,borderRadius:12,fontSize:14,cursor:"pointer"}}>Close</button>
+            <button onClick={()=>deleteTxn(t.id)} style={{width:"100%",padding:"14px",background:C.redBg,color:C.red,border:`1px solid ${C.redBorder}`,borderRadius:14,fontSize:15,fontWeight:600,cursor:"pointer",marginBottom:10}}>Delete Transaction</button>
+            <button onClick={()=>setSelectedTxn(null)} style={{width:"100%",padding:"13px",background:"transparent",color:C.textSub,border:`1px solid ${C.border}`,borderRadius:14,fontSize:14,cursor:"pointer"}}>Close</button>
           </div>
         </div>
       </div>
@@ -250,239 +537,73 @@ function App(){
   };
 
   const SettingsModal=()=>(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200}}>
-      <div style={{background:C.card,borderRadius:"20px 20px 0 0",padding:"28px 20px 48px",width:"100%",maxWidth:480,border:`1px solid ${C.border}`,borderBottom:"none"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-          <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:12,letterSpacing:2,color:C.muted}}>SETTINGS</p>
-          <button onClick={()=>setShowSettings(false)} style={{background:"none",border:"none",color:C.muted,fontSize:20,cursor:"pointer"}}>✕</button>
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200,backdropFilter:"blur(8px)"}}>
+      <div style={{background:C.card,borderRadius:"24px 24px 0 0",padding:"28px 20px 48px",width:"100%",maxWidth:480,border:`1px solid ${C.borderLight}`,borderBottom:"none",boxShadow:"0 -8px 40px rgba(0,0,0,0.6)"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
+          <p style={{...mono,fontSize:12,letterSpacing:2,color:C.muted}}>SETTINGS</p>
+          <button onClick={()=>setShowSettings(false)} style={{background:C.surface,border:`1px solid ${C.border}`,color:C.textSub,width:32,height:32,borderRadius:10,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
         </div>
-        <p style={{fontFamily:"'Outfit',sans-serif",fontSize:14,color:C.text,fontWeight:500,marginBottom:6}}>Anthropic API Key</p>
-        <p style={{fontFamily:"'Outfit',sans-serif",fontSize:12,color:C.muted,lineHeight:1.7,marginBottom:12}}>Get yours free at <span style={{color:C.accent}}>console.anthropic.com</span> → API Keys. Stored only on this device.</p>
-        <input type="password" value={keyInput} onChange={e=>setKeyInput(e.target.value)} placeholder="sk-ant-..."
-          style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,color:C.text,borderRadius:10,padding:"13px 14px",fontSize:14,fontFamily:"'JetBrains Mono',monospace",marginBottom:12,outline:"none"}}/>
-        <button onClick={()=>{setApiKey(keyInput);localStorage.setItem("ft_apikey",keyInput);showToast("API key saved!");setShowSettings(false);}}
-          style={{width:"100%",padding:"14px",background:C.accent,color:"#000",border:"none",borderRadius:12,fontSize:15,fontWeight:700,cursor:"pointer",marginBottom:10}}>Save Key</button>
-        {apiKey&&<button onClick={()=>{setApiKey("");setKeyInput("");localStorage.removeItem("ft_apikey");showToast("Key removed");setShowSettings(false);}}
-          style={{width:"100%",padding:"12px",background:"transparent",color:C.red,border:`1px solid ${C.red}40`,borderRadius:12,fontSize:14,cursor:"pointer"}}>Remove Key</button>}
+        <p style={{fontSize:15,color:C.text,fontWeight:600,marginBottom:6}}>Anthropic API Key</p>
+        <p style={{fontSize:13,color:C.textSub,lineHeight:1.7,marginBottom:16}}>Get yours free at <span style={{color:C.accent}}>console.anthropic.com</span> → API Keys.<br/>Powers receipt scanning and habit tips.</p>
+        <input type="password" value={keyInput} onChange={e=>setKeyInput(e.target.value)} placeholder="sk-ant-..." style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,color:C.text,borderRadius:12,padding:"14px 16px",fontSize:14,...mono,marginBottom:14,outline:"none"}}/>
+        <button onClick={()=>{setApiKey(keyInput);localStorage.setItem("ft_apikey",keyInput);showToast("API key saved!");setShowSettings(false);}} style={{width:"100%",padding:"15px",background:C.accent,color:"#000",border:"none",borderRadius:12,fontSize:16,fontWeight:700,cursor:"pointer",marginBottom:10,boxShadow:`0 4px 16px ${C.accentGlow}`}}>Save Key</button>
+        {apiKey&&<button onClick={()=>{setApiKey("");setKeyInput("");localStorage.removeItem("ft_apikey");showToast("Key removed","error");setShowSettings(false);}} style={{width:"100%",padding:"13px",background:"transparent",color:C.red,border:`1px solid ${C.redBorder}`,borderRadius:12,fontSize:14,cursor:"pointer"}}>Remove Key</button>}
       </div>
     </div>
   );
 
   const BankModal=()=>(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200}}>
-      <div style={{background:C.card,borderRadius:"20px 20px 0 0",padding:"28px 20px 48px",width:"100%",maxWidth:480,border:`1px solid ${C.border}`,borderBottom:"none"}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
-          <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:12,letterSpacing:2,color:C.muted}}>CONNECT BANK</p>
-          <button onClick={()=>setShowBankModal(false)} style={{background:"none",border:"none",color:C.muted,fontSize:20,cursor:"pointer"}}>✕</button>
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.85)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:200,backdropFilter:"blur(8px)"}}>
+      <div style={{background:C.card,borderRadius:"24px 24px 0 0",padding:"28px 20px 48px",width:"100%",maxWidth:480,border:`1px solid ${C.borderLight}`,borderBottom:"none",boxShadow:"0 -8px 40px rgba(0,0,0,0.6)"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
+          <p style={{...mono,fontSize:12,letterSpacing:2,color:C.muted}}>CONNECT BANK</p>
+          <button onClick={()=>setShowBankModal(false)} style={{background:C.surface,border:`1px solid ${C.border}`,color:C.textSub,width:32,height:32,borderRadius:10,cursor:"pointer",fontSize:14,display:"flex",alignItems:"center",justifyContent:"center"}}>✕</button>
         </div>
-        <button onClick={connectPlaid} disabled={plaidLoading}
-          style={{width:"100%",padding:"16px",background:"#12123a",color:"#fff",border:"1px solid #4444cc60",borderRadius:12,fontSize:15,fontWeight:700,cursor:plaidLoading?"default":"pointer",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"center",gap:10}}>
-          🏦 {plaidLoading?"Connecting...":"Connect with Plaid (Live Bank Data)"}
+        <button onClick={connectPlaid} disabled={plaidLoading} style={{width:"100%",padding:"16px",background:"linear-gradient(135deg,#1a1a4a,#12123a)",color:"#fff",border:"1px solid rgba(100,100,255,0.3)",borderRadius:14,fontSize:15,fontWeight:700,cursor:plaidLoading?"default":"pointer",marginBottom:14,display:"flex",alignItems:"center",justifyContent:"center",gap:10,boxShadow:"0 4px 20px rgba(60,60,200,0.2)"}}>
+          🏦 {plaidLoading?"Connecting...":"Connect with Plaid"}
         </button>
-        <div style={{background:C.card,borderRadius:14,border:`1px solid ${C.amber}50`,padding:"16px 18px",marginBottom:16,background:C.amberBg}}>
-          <p style={{fontFamily:"'Outfit',sans-serif",fontSize:12,color:C.amber,fontWeight:600,marginBottom:4}}>Needs Plaid production access</p>
-          <p style={{fontFamily:"'Outfit',sans-serif",fontSize:12,color:C.muted,lineHeight:1.7}}>Apply at dashboard.plaid.com → Get production access. Free, takes 1-3 days.</p>
+        <div style={{...card(),border:`1px solid ${C.amberBorder}`,background:C.amberBg,marginBottom:20}}>
+          <p style={{fontSize:13,color:C.amber,fontWeight:600,marginBottom:4}}>Needs Plaid production access</p>
+          <p style={{fontSize:12,color:C.textSub,lineHeight:1.7}}>Apply free at dashboard.plaid.com → Get production access. Takes 1-3 days.</p>
         </div>
-        <p style={{fontFamily:"'Outfit',sans-serif",fontSize:13,color:C.text,fontWeight:500,marginBottom:8}}>Or update balance manually:</p>
-        <input type="number" value={manualBal} onChange={e=>setManualBal(e.target.value)} placeholder="e.g. 2500.00"
-          style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,color:C.text,borderRadius:10,padding:"12px 14px",fontSize:16,marginBottom:10,outline:"none"}}/>
-        <button onClick={()=>{if(manualBal){setBalance(parseFloat(manualBal));localStorage.setItem("ft_balance",manualBal);showToast("Balance updated!");}setShowBankModal(false);}}
-          style={{width:"100%",padding:"13px",background:C.accent,color:"#000",border:"none",borderRadius:10,fontSize:15,fontWeight:700,cursor:"pointer"}}>Save Balance</button>
+        <p style={{fontSize:14,color:C.text,fontWeight:500,marginBottom:10}}>Update balance manually:</p>
+        <input type="number" value={manualBal} onChange={e=>setManualBal(e.target.value)} placeholder="e.g. 2500.00" style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,color:C.text,borderRadius:12,padding:"14px 16px",fontSize:16,marginBottom:12,outline:"none"}}/>
+        <button onClick={()=>{if(manualBal){setBalance(parseFloat(manualBal));localStorage.setItem("ft_balance",manualBal);showToast("Balance updated!");}setShowBankModal(false);}} style={{width:"100%",padding:"15px",background:C.accent,color:"#000",border:"none",borderRadius:12,fontSize:16,fontWeight:700,cursor:"pointer",boxShadow:`0 4px 16px ${C.accentGlow}`}}>Save Balance</button>
       </div>
     </div>
   );
 
-  const TABS=[{id:"home",icon:"🏠",label:"HOME"},{id:"receipt",icon:"📷",label:"RECEIPT"},{id:"summary",icon:"📊",label:"SUMMARY"},{id:"habits",icon:"🧠",label:"HABITS"}];
+  const TABS=[
+    {id:"home",label:"Home",icon:(a)=><svg width="22" height="22" viewBox="0 0 24 24" fill={a?"#00e87a":"#3a5445"} stroke="none"><path d="M12 2L2 10h3v10h6v-6h2v6h6V10h3L12 2z"/></svg>},
+    {id:"receipt",label:"Scan",icon:(a)=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={a?"#00e87a":"#3a5445"} strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 8h10M7 12h10M7 16h5"/></svg>},
+    {id:"summary",label:"Summary",icon:(a)=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={a?"#00e87a":"#3a5445"} strokeWidth="2" strokeLinecap="round"><path d="M3 3v18h18"/><path d="M7 16l4-4 4 4 4-8"/></svg>},
+    {id:"habits",label:"Habits",icon:(a)=><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={a?"#00e87a":"#3a5445"} strokeWidth="2" strokeLinecap="round"><path d="M12 2a7 7 0 017 7c0 5-7 13-7 13S5 14 5 9a7 7 0 017-7z"/><circle cx="12" cy="9" r="2.5"/></svg>},
+  ];
+
+  const toastColor=toastType==="error"?C.red:toastType==="warning"?C.amber:C.accent;
 
   return(
     <div style={{fontFamily:"'Outfit',sans-serif",background:C.bg,color:C.text,minHeight:"100vh",maxWidth:480,margin:"0 auto",position:"relative",paddingBottom:90}}>
-      {toast&&<div style={{position:"fixed",top:24,left:"50%",transform:"translateX(-50%)",background:C.accent,color:"#000",padding:"10px 22px",borderRadius:22,fontWeight:700,fontSize:13,zIndex:400,whiteSpace:"nowrap"}}>{toast}</div>}
-      <div style={{padding:"54px 18px 14px",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-        <h1 style={{fontFamily:"'JetBrains Mono',monospace",fontSize:20,fontWeight:500,margin:0}}><span style={{color:C.accent}}>fin</span>track</h1>
-        <button onClick={()=>setShowSettings(true)} style={{background:"none",border:`1px solid ${C.border}`,color:C.muted,fontSize:18,cursor:"pointer",width:36,height:36,borderRadius:10,display:"flex",alignItems:"center",justifyContent:"center"}}>⚙</button>
+      {toast&&<div style={{position:"fixed",top:20,left:"50%",transform:"translateX(-50%)",background:C.card,color:toastColor,padding:"11px 24px",borderRadius:24,fontWeight:600,fontSize:13,zIndex:500,whiteSpace:"nowrap",border:`1px solid ${toastColor}40`,boxShadow:`0 4px 24px rgba(0,0,0,0.5),0 0 20px ${toastColor}20`,animation:"fadeUp 0.3s ease"}}>{toast}</div>}
+      <div style={{padding:"52px 20px 16px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`1px solid ${C.border}`}}>
+        <div>
+          <h1 style={{...mono,fontSize:22,fontWeight:600,margin:0,letterSpacing:-0.5}}><span style={{color:C.accent}}>fin</span><span style={{color:C.text}}>track</span></h1>
+          <p style={{fontSize:11,color:C.muted,marginTop:2,...mono,letterSpacing:1}}>{new Date().toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})}</p>
+        </div>
+        <button onClick={()=>setShowSettings(true)} style={{background:C.card,border:`1px solid ${C.border}`,color:C.textSub,width:40,height:40,borderRadius:12,cursor:"pointer",fontSize:16,display:"flex",alignItems:"center",justifyContent:"center",boxShadow:"0 2px 8px rgba(0,0,0,0.3)"}}>⚙</button>
       </div>
       <div style={{padding:"20px 0"}}>
-        {tab==="home"&&(
-          <div style={{padding:"0 14px"}}>
-            <div style={{...card,textAlign:"center",padding:"28px 20px",marginBottom:14,position:"relative",overflow:"hidden"}}>
-              <div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse at 50% 120%, ${C.accentBg} 0%, transparent 70%)`,pointerEvents:"none"}}/>
-              <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.muted,letterSpacing:3,marginBottom:10}}>{bankConnected?"● LIVE BALANCE":"● BALANCE"}</p>
-              <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:42,fontWeight:500,letterSpacing:-1,color:C.text,marginBottom:4}}>${fmt(balance)}</div>
-              <p style={{fontSize:12,color:C.muted,marginBottom:14}}>Current balance</p>
-              <button onClick={()=>setShowBankModal(true)} style={{padding:"7px 20px",background:bankConnected?C.accentBg:"transparent",border:`1px solid ${bankConnected?C.accent:C.border}`,color:bankConnected?C.accent:C.muted,borderRadius:20,fontSize:12,cursor:"pointer",fontFamily:"'JetBrains Mono',monospace",letterSpacing:1}}>
-                {bankConnected?"✓ CONNECTED":"+ CONNECT BANK"}
-              </button>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:10}}>
-              {[{label:"Week in",val:weekIncome,color:C.accent},{label:"Week out",val:weekExpense,color:C.red}].map(({label,val,color})=>(
-                <div key={label} style={{...card,marginBottom:0,borderColor:color+"30",padding:"14px"}}>
-                  <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.muted,letterSpacing:2,marginBottom:8}}>{label.toUpperCase()}</p>
-                  <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:20,color,fontWeight:500}}>${fmt(val)}</p>
-                </div>
-              ))}
-            </div>
-            <div style={{...card,display:"flex",justifyContent:"space-between",alignItems:"center",borderColor:(weekNet>=0?C.accent:C.red)+"50",background:weekNet>=0?`linear-gradient(135deg,${C.card},${C.accentBg})`:`linear-gradient(135deg,${C.card},${C.redBg})`}}>
-              <div>
-                <p style={{fontSize:12,color:C.muted,marginBottom:4}}>Weekly net</p>
-                <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:28,color:weekNet>=0?C.accent:C.red,fontWeight:500}}>{weekNet>=0?"+":"–"}${fmt(Math.abs(weekNet))}</p>
-              </div>
-              <div style={{fontSize:36}}>{weekNet>=0?"📈":"📉"}</div>
-            </div>
-            <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.muted,letterSpacing:2,marginTop:18,marginBottom:10}}>RECENT TRANSACTIONS</p>
-            {txns.length===0&&(
-              <div style={{...card,textAlign:"center",padding:"32px 20px"}}>
-                <p style={{fontSize:32,marginBottom:10}}>📋</p>
-                <p style={{fontSize:14,color:C.muted}}>No transactions yet.</p>
-                <p style={{fontSize:13,color:C.muted,marginTop:4}}>Tap 📷 to scan your first receipt!</p>
-              </div>
-            )}
-            {txns.slice(0,20).map(t=>(
-              <div key={t.id} onClick={()=>setSelectedTxn(t)} style={{...card,display:"flex",justifyContent:"space-between",alignItems:"center",padding:"12px 14px",cursor:"pointer"}}>
-                <div style={{display:"flex",alignItems:"center",gap:12}}>
-                  <div style={{width:42,height:42,borderRadius:10,overflow:"hidden",flexShrink:0,background:t.photo?"#000":t.type==="income"?C.accentBg:C.surface,display:"flex",alignItems:"center",justifyContent:"center"}}>
-                    {t.photo?<img src={t.photo} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}}/>:<span style={{fontSize:18}}>{EMOJI[t.category]||"📦"}</span>}
-                  </div>
-                  <div>
-                    <p style={{fontSize:14,fontWeight:500,marginBottom:2}}>{t.store}</p>
-                    <p style={{fontSize:11,color:C.muted}}>{t.category} · {t.date}{t.photo?" · 📷":""}</p>
-                  </div>
-                </div>
-                <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:14,color:t.type==="income"?C.accent:C.text,fontWeight:500,whiteSpace:"nowrap"}}>{t.type==="income"?"+":"–"}${fmt(t.amount)}</p>
-              </div>
-            ))}
-          </div>
-        )}
-        {tab==="receipt"&&(
-          <div style={{padding:"0 14px"}}>
-            <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.muted,letterSpacing:2,marginBottom:14}}>SCAN RECEIPT</p>
-            {!apiKey&&<div style={{...card,borderColor:C.amber+"50",background:C.amberBg,marginBottom:14}}><p style={{fontSize:13,color:C.amber,fontWeight:600,marginBottom:4}}>API key needed</p><p style={{fontSize:12,color:C.muted,lineHeight:1.7}}>Tap ⚙ top right to add your Anthropic API key, or use manual entry below.</p></div>}
-            {!preview&&!scanResult&&(
-              <div onClick={()=>fileRef.current?.click()} style={{...card,textAlign:"center",padding:"44px 20px",cursor:"pointer",border:`2px dashed ${C.border}`,background:"transparent"}}>
-                <div style={{fontSize:44,marginBottom:12}}>📷</div>
-                <p style={{fontSize:15,fontWeight:500,marginBottom:6}}>Tap to scan a receipt</p>
-                <p style={{fontSize:13,color:C.muted}}>Photo saves automatically with the transaction</p>
-                <input ref={fileRef} type="file" accept="image/*" capture="environment" style={{display:"none"}} onChange={e=>{if(e.target.files[0])doScan(e.target.files[0]);}}/>
-              </div>
-            )}
-            {preview&&scanning&&(
-              <div style={{...card,textAlign:"center",padding:30}}>
-                <img src={preview} alt="receipt" style={{maxWidth:"100%",maxHeight:200,objectFit:"contain",borderRadius:8,marginBottom:18}}/>
-                <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:13,color:C.accent,letterSpacing:2}}>⟳ SCANNING WITH AI...</p>
-              </div>
-            )}
-            {scanResult&&!scanResult.error&&(
-              <>
-                {preview&&<img src={preview} alt="receipt" style={{width:"100%",maxHeight:160,objectFit:"contain",borderRadius:10,marginBottom:10}}/>}
-                <div style={card}>
-                  <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.accent,letterSpacing:2,marginBottom:14}}>✓ SCAN COMPLETE — tap to edit</p>
-                  <ScanField label="Store" value={scanResult.store} onChange={v=>setScanResult(r=>({...r,store:v}))}/>
-                  <ScanField label="Amount" value={scanResult.amount} onChange={v=>setScanResult(r=>({...r,amount:parseFloat(v.replace("$",""))||0}))}/>
-                  <ScanField label="Date" value={scanResult.date} onChange={v=>setScanResult(r=>({...r,date:v}))}/>
-                  <div style={{marginBottom:10}}>
-                    <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.muted,letterSpacing:1,marginBottom:4}}>CATEGORY</p>
-                    <select value={scanResult.category} onChange={e=>setScanResult(r=>({...r,category:e.target.value}))} style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,color:C.text,borderRadius:8,padding:"9px 12px",fontSize:14,outline:"none"}}>
-                      {CATS.map(c=><option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  {scanResult.items&&scanResult.items!=="N/A"&&<p style={{fontSize:12,color:C.muted}}>Items: {scanResult.items}</p>}
-                </div>
-                <button onClick={()=>addTxn({...scanResult,amount:parseFloat(scanResult.amount)},scanPhoto)} style={{width:"100%",padding:"14px",background:C.accent,color:"#000",border:"none",borderRadius:12,fontSize:15,fontWeight:700,cursor:"pointer",marginBottom:8}}>Add Transaction + Save Photo</button>
-                <button onClick={()=>{setScanResult(null);setPreview(null);setScanPhoto(null);}} style={{width:"100%",padding:"12px",background:"transparent",color:C.muted,border:`1px solid ${C.border}`,borderRadius:12,fontSize:14,cursor:"pointer"}}>Try Again</button>
-              </>
-            )}
-            {scanResult?.error&&(
-              <div style={{...card,textAlign:"center",padding:"24px"}}>
-                <p style={{color:C.red,marginBottom:6}}>⚠ Couldn't read receipt</p>
-                {scanResult.msg&&<p style={{fontSize:11,color:C.muted,marginBottom:12}}>{scanResult.msg}</p>}
-                <button onClick={()=>{setScanResult(null);setPreview(null);setScanPhoto(null);}} style={{padding:"8px 22px",background:"transparent",border:`1px solid ${C.border}`,color:C.muted,borderRadius:8,cursor:"pointer"}}>Try Again</button>
-              </div>
-            )}
-            {!preview&&!scanResult&&(
-              <>
-                <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.muted,letterSpacing:2,marginTop:22,marginBottom:12}}>OR ENTER MANUALLY</p>
-                <div style={card}>
-                  {[["amount","Amount ($)","number","0.00"],["store","Store / Source","text","e.g. Walmart"]].map(([k,lbl,type,ph])=>(
-                    <div key={k} style={{marginBottom:12}}>
-                      <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.muted,letterSpacing:1,marginBottom:4}}>{lbl.toUpperCase()}</p>
-                      <input value={manualForm[k]} onChange={e=>setManualForm(f=>({...f,[k]:e.target.value}))} type={type} placeholder={ph} style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,color:C.text,borderRadius:8,padding:"10px 12px",fontSize:14,outline:"none"}}/>
-                    </div>
-                  ))}
-                  <div style={{marginBottom:12}}>
-                    <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.muted,letterSpacing:1,marginBottom:4}}>CATEGORY</p>
-                    <select value={manualForm.category} onChange={e=>setManualForm(f=>({...f,category:e.target.value}))} style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,color:C.text,borderRadius:8,padding:"10px 12px",fontSize:14,outline:"none"}}>
-                      {CATS.map(c=><option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  <div style={{marginBottom:16}}>
-                    <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.muted,letterSpacing:1,marginBottom:4}}>DATE</p>
-                    <input type="date" value={manualForm.date} onChange={e=>setManualForm(f=>({...f,date:e.target.value}))} style={{width:"100%",background:C.surface,border:`1px solid ${C.border}`,color:C.text,borderRadius:8,padding:"10px 12px",fontSize:14,outline:"none"}}/>
-                  </div>
-                  <button onClick={()=>{if(manualForm.amount&&manualForm.store)addTxn(manualForm);else showToast("Enter amount and store name");}} style={{width:"100%",padding:"13px",background:C.accent,color:"#000",border:"none",borderRadius:10,fontSize:15,fontWeight:700,cursor:"pointer"}}>Add Transaction</button>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-        {tab==="summary"&&(
-          <div style={{padding:"0 14px"}}>
-            <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.muted,letterSpacing:2,marginBottom:14}}>WEEKLY SUMMARY · {wLabel.toUpperCase()}</p>
-            <div style={{...card,textAlign:"center",padding:"28px 20px",marginBottom:14,position:"relative",overflow:"hidden"}}>
-              <div style={{position:"absolute",inset:0,background:`radial-gradient(ellipse at 50% 120%, ${weekNet>=0?C.accentBg:C.redBg} 0%, transparent 70%)`,pointerEvents:"none"}}/>
-              <p style={{fontSize:13,color:C.muted,marginBottom:8}}>You {weekNet>=0?"made":"lost"} this week</p>
-              <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:46,color:weekNet>=0?C.accent:C.red,fontWeight:500,lineHeight:1}}>{weekNet>=0?"+":"–"}${fmt(Math.abs(weekNet))}</p>
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:14}}>
-              {[{label:"Income",v:weekIncome,c:C.accent},{label:"Expenses",v:weekExpense,c:C.red}].map(({label,v,c})=>(
-                <div key={label} style={{...card,marginBottom:0}}><p style={{fontSize:12,color:C.muted,marginBottom:4}}>{label}</p><p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:19,color:c}}>${fmt(v)}</p></div>
-              ))}
-            </div>
-            <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.muted,letterSpacing:2,marginBottom:10}}>SPENDING BREAKDOWN</p>
-            {Object.keys(byCat).length===0&&<p style={{fontSize:13,color:C.muted,padding:"12px 0"}}>No expenses logged this week yet.</p>}
-            {Object.entries(byCat).sort((a,b)=>b[1]-a[1]).map(([k,v])=>{
-              const pct=weekExpense>0?(v/weekExpense)*100:0;
-              return(<div key={k} style={{...card,padding:"12px 14px"}}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}><span style={{fontSize:14}}>{EMOJI[k]} {k}</span><span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:13}}>${fmt(v)}</span></div>
-                <div style={{height:3,background:C.surface,borderRadius:3}}><div style={{height:"100%",width:`${pct}%`,background:C.red,borderRadius:3}}/></div>
-              </div>);
-            })}
-            <button onClick={makeEmail} style={{width:"100%",padding:"14px",background:C.accent,color:"#000",border:"none",borderRadius:12,fontSize:15,fontWeight:700,cursor:"pointer",marginTop:6,marginBottom:12}}>Generate Weekly Email</button>
-            {emailTxt&&(
-              <div style={card}>
-                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-                  <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.muted,letterSpacing:2}}>EMAIL PREVIEW</p>
-                  <button onClick={()=>{navigator.clipboard.writeText(emailTxt);setCopied(true);setTimeout(()=>setCopied(false),2200);}} style={{padding:"4px 14px",background:copied?C.accentBg:"transparent",border:`1px solid ${copied?C.accent:C.border}`,color:copied?C.accent:C.muted,borderRadius:6,fontSize:12,cursor:"pointer",fontFamily:"'JetBrains Mono',monospace"}}>{copied?"✓ Copied!":"Copy"}</button>
-                </div>
-                <pre style={{fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:C.text,whiteSpace:"pre-wrap",lineHeight:1.7,margin:0,wordBreak:"break-word"}}>{emailTxt}</pre>
-              </div>
-            )}
-          </div>
-        )}
-        {tab==="habits"&&(
-          <div style={{padding:"0 14px"}}>
-            <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.muted,letterSpacing:2,marginBottom:14}}>SPENDING HABITS</p>
-            {!apiKey&&<div style={{...card,borderColor:C.amber+"50",background:C.amberBg,marginBottom:14}}><p style={{fontSize:13,color:C.amber,fontWeight:600,marginBottom:4}}>API key needed</p><p style={{fontSize:12,color:C.muted,lineHeight:1.7}}>Tap ⚙ top right to add your Anthropic API key.</p></div>}
-            <div style={{...card,textAlign:"center",padding:"28px 20px",marginBottom:14}}>
-              <div style={{fontSize:44,marginBottom:14}}>🧠</div>
-              <p style={{fontSize:14,color:C.muted,marginBottom:18,lineHeight:1.7}}>AI analyzes your spending and gives specific, personalized tips.</p>
-              <button onClick={getHabits} disabled={loadingHabits} style={{width:"100%",padding:"14px",background:loadingHabits?C.surface:C.accent,color:loadingHabits?C.muted:"#000",border:`1px solid ${loadingHabits?C.border:C.accent}`,borderRadius:12,fontSize:15,fontWeight:700,cursor:loadingHabits?"default":"pointer"}}>
-                {loadingHabits?"⟳ Analyzing your spending...":"Analyze My Habits"}
-              </button>
-            </div>
-            {habits&&<div style={card}><p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.accent,letterSpacing:2,marginBottom:14}}>✓ PERSONALIZED TIPS</p><p style={{fontSize:14,lineHeight:1.85,color:C.text,whiteSpace:"pre-wrap"}}>{habits}</p></div>}
-            <p style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:C.muted,letterSpacing:2,marginTop:20,marginBottom:10}}>ALL-TIME SPENDING</p>
-            {Object.entries(txns.filter(t=>t.type==="expense").reduce((acc,t)=>{acc[t.category]=(acc[t.category]||0)+t.amount;return acc;},{})).sort((a,b)=>b[1]-a[1]).map(([k,v])=>(
-              <div key={k} style={{...card,display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 14px"}}>
-                <span style={{fontSize:14}}>{EMOJI[k]} {k}</span><span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:14,color:C.red}}>${fmt(v)}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        {tab==="home"&&renderHome()}
+        {tab==="receipt"&&renderReceipt()}
+        {tab==="summary"&&renderSummary()}
+        {tab==="habits"&&renderHabits()}
       </div>
-      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:C.surface,borderTop:`1px solid ${C.border}`,display:"flex",justifyContent:"space-around",padding:"12px 0 28px",zIndex:100}}>
+      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:C.card,borderTop:`1px solid ${C.border}`,display:"flex",justifyContent:"space-around",padding:"10px 0 26px",zIndex:100,boxShadow:"0 -4px 24px rgba(0,0,0,0.4)"}}>
         {TABS.map(t=>(
-          <button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:4,background:"none",border:"none",color:tab===t.id?C.accent:C.muted,cursor:"pointer",padding:"4px 12px"}}>
-            <span style={{fontSize:20}}>{t.icon}</span>
-            <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9,letterSpacing:1}}>{t.label}</span>
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{display:"flex",flexDirection:"column",alignItems:"center",gap:5,background:"none",border:"none",cursor:"pointer",padding:"6px 16px",position:"relative"}}>
+            {tab===t.id&&<div style={{position:"absolute",top:-10,left:"50%",transform:"translateX(-50%)",width:32,height:3,borderRadius:3,background:C.accent,boxShadow:`0 0 8px ${C.accent}`}}/>}
+            {t.icon(tab===t.id)}
+            <span style={{fontSize:10,...mono,letterSpacing:1,color:tab===t.id?C.accent:C.muted,fontWeight:tab===t.id?"600":"400"}}>{t.label.toUpperCase()}</span>
           </button>
         ))}
       </div>
